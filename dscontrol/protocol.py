@@ -96,10 +96,8 @@ class StatusReport:
         }
 
 
-def make_hello(client_id: str, password: Optional[str] = None) -> ProtocolMessage:
+def make_hello(client_id: str) -> ProtocolMessage:
     payload: Dict[str, Any] = {"client_id": client_id}
-    if password:
-        payload["password"] = password
     return ProtocolMessage(MessageType.HELLO, payload)
 
 

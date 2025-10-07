@@ -42,18 +42,18 @@ class DriverStationController:
     Issues enable/disable/e-stop commands to the local Driver Station.
 
     Automation shortcuts:
-      - Enable: Ctrl + Shift + E (customisable)
+      - Enable: [ + ] + \\ (customisable)
       - Disable: Enter
-      - E-stop: Ctrl + Shift + Space
+      - E-stop: Space
 
     The exact key bindings used by the official DS can vary by season; adjust
     `ENABLE_COMBO`, `DISABLE_KEY`, and `ESTOP_COMBO` if a different mapping is
     required.
     """
 
-    ENABLE_COMBO = ["ctrl", "shift", "e"]
+    ENABLE_COMBO = ["[", "]", "\\"]
     DISABLE_KEY = "enter"
-    ESTOP_COMBO = ["ctrl", "shift", "space"]
+    ESTOP_COMBO = ["space"]
 
     def __init__(self, backend_preference: Optional[str] = None) -> None:
         self._backend = backend_preference or self._select_backend()

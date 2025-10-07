@@ -24,7 +24,6 @@ class ClientConfig:
     server_host: str = "127.0.0.1"
     server_port: int = protocol.DEFAULT_PORT
     client_id: str = "client"
-    password: Optional[str] = None
     heartbeat_interval: float = protocol.HEARTBEAT_INTERVAL_SECONDS
     hello_retry_interval: float = 1.0
 
@@ -132,7 +131,7 @@ class RemoteClient(asyncio.DatagramProtocol):
             while True:
                 now = time.time()
                 if now - self._last_hello >= self.config.hello_retry_interval:
-                    self._send(protocol.make_hello(self.config.client_id, self.config.password))
+                    self._send(protocol.make_hello(self.config.client_id))
                     self._last_hello = now
                 await asyncio.sleep(self.config.hello_retry_interval)
         except asyncio.CancelledError:

@@ -1,6 +1,8 @@
 # DSControl — Remote FRC Driver Station Control
 
-This repository implements the architecture described in `OVERVIEW.md`: a lightweight, UDP-based system that lets laptop clients safely enable, disable, or e-stop a robot by talking to a server running on the official FRC Driver Station PC. Safety, low latency, and resilience are the guiding principles—if communications stop, the robot is forced safe immediately.
+A lightweight, UDP-based system that lets laptop clients safely enable, disable, or e-stop a robot by talking to a server running on the official FRC Driver Station PC. Safety, low latency, and resilience are the guiding principles—if communications stop, the robot is forced safe immediately.
+
+This setup is great for teams that use linux personal laptops and thus does not have the official Driver Station.
 
 ## Components
 
@@ -31,12 +33,10 @@ Both components share the JSON-over-UDP protocol defined in `dscontrol/protocol.
 ```bash
 # inside the repository
 uv sync                       # resolves deps and creates .venv (if needed)
-uv run python -V              # sanity check; prints interpreter version
 ```
 
 - `uv sync` reads `pyproject.toml` and prepares a managed environment (`.venv/`).
 - To include the optional automation backend: `uv sync --extra server-control`.
-- Run `uv sync --locked` once you have created a lock file in an online environment.
 
 ### Running the server
 
@@ -55,7 +55,7 @@ Key behaviours:
 ### Running the client
 
 ```bash
-uv run dscontrol-client --host 192.168.1.42 --port 8750 --client-id practice-laptop
+uv run dscontrol-client --host 10.59.87.200 --port 8750 --client-id practice-laptop
 ```
 
 Then use the interactive commands:
@@ -86,10 +86,8 @@ Every UDP frame is UTF-8 JSON with a `type` field (`HELLO`, `HEARTBEAT`, `COMMAN
 ## Extensibility Ideas
 
 - Swap the automation backend for a Windows-specific `SendInput` implementation.
-- Add authentication to `HELLO` (shared secret, TLS, or per-client tokens).
 - Layer TCP alongside UDP for guaranteed command delivery.
 - Integrate a slim VNC/web preview (stubs can live next to `DriverStationController`).
-- Expand testing with virtual network harnesses once sandbox networking is available.
 
 ## Testing Notes
 

@@ -18,7 +18,7 @@ _LOGGER = logging.getLogger(__name__)
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Remote control client for the FRC Driver Station")
-    parser.add_argument("--host", default="127.0.0.1", help="Server hostname or IP (default: 127.0.0.1)")
+    parser.add_argument("--host", default="10.59.87.210", help="Server hostname or IP (default: 10.59.87.210)")
     parser.add_argument(
         "--port", type=int, default=protocol.DEFAULT_PORT, help=f"Server UDP port (default: {protocol.DEFAULT_PORT})"
     )
@@ -30,7 +30,6 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
     parser.add_argument("--heartbeat-interval", type=float, default=protocol.HEARTBEAT_INTERVAL_SECONDS)
-    parser.add_argument("--password", default=None, help="Optional shared secret")
     return parser
 
 
@@ -103,7 +102,6 @@ def main(argv: Optional[list[str]] = None) -> None:
         server_port=args.port,
         client_id=args.client_id,
         heartbeat_interval=args.heartbeat_interval,
-        password=args.password,
     )
 
     async def runner() -> None:
