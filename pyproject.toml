@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dscontrol"
+version = "0.1.0"
+description = "FRC Remote Driver Station Control System"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name = "DSControl Contributors"}]
+dependencies = []
+
+[project.optional-dependencies]
+server-control = ["pyautogui>=0.9.54"]
+
+[project.scripts]
+dscontrol-server = "dscontrol.server.cli:main"
+dscontrol-client = "dscontrol.client.cli:main"

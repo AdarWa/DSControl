@@ -1,0 +1,86 @@
+"""
+Console entry point for running the Driver Station server.
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import logging
+import pathlib
+from typing import Optional
+
+from .. import protocol
+from .app import ServerConfig, run_server
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="FRC Driver Station remote control server")
+    defaults = ServerConfig()
+    parser.add_argument("--host", default="0.0.0.0", help="IP address to bind (default: 0.0.0.0)")
+    parser.add_argument(
+        "--port", type=int, default=protocol.DEFAULT_PORT, help=f"UDP port to bind (default: {protocol.DEFAULT_PORT})"
+    )
+    parser.add_argument(
+        "--heartbeat-timeout",
+        type=float,
+        default=defaults.heartbeat_timeout,
+        help="Seconds before a missed heartbeat disables the robot",
+    )
+    parser.add_argument(
+        "--status-interval",
+        type=float,
+        default=defaults.status_interval,
+        help="Seconds between status broadcasts",
+    )
+    parser.add_argument(
+        "--log-file",
+        type=pathlib.Path,
+        default=None,
+        help="Optional path to log file (default: stdout only)",
+    )
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+        help="Minimum logging level (default: INFO)",
+    )
+    return parser
+
+
+def _configure_logging(level: str, log_file: Optional[pathlib.Path]) -> None:
+    logging.basicConfig(
+        level=getattr(logging, level.upper(), logging.INFO),
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        handlers=[logging.StreamHandler()],
+    )
+
+    if log_file:
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        file_handler = logging.FileHandler(log_file, encoding="utf-8")
+        file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+        logging.getLogger().addHandler(file_handler)
+        logging.getLogger(__name__).info("Logging to %s", log_file)
+
+
+def main(argv: Optional[list[str]] = None) -> None:
+    parser = _build_parser()
+    args = parser.parse_args(argv)
+
+    _configure_logging(args.log_level, args.log_file)
+
+    config = ServerConfig(
+        host=args.host,
+        port=args.port,
+        heartbeat_timeout=args.heartbeat_timeout,
+        status_interval=args.status_interval,
+    )
+
+    try:
+        asyncio.run(run_server(config))
+    except KeyboardInterrupt:
+        logging.getLogger(__name__).info("Server interrupted by user.")
+
+
+if __name__ == "__main__":
+    main()
