@@ -14,15 +14,18 @@ import logging
 import platform
 from dataclasses import dataclass
 from typing import Optional
+import time
 
 _LOGGER = logging.getLogger(__name__)
+
+KEY_PRESS_INTERVAL = 0.2 # seconds
 
 
 def _load_pyautogui():
     try:
-        import pyautogui  # type: ignore
+        import pydirectinput  # type: ignore
 
-        return pyautogui
+        return pydirectinput
     except Exception:  # pragma: no cover - absence is expected on headless hosts
         return None
 
@@ -83,9 +86,15 @@ class DriverStationController:
             try:
                 _LOGGER.debug("Sending %s via pyautogui: %s", action, keys)
                 if len(keys) == 1:
-                    PY_AUTO_GUI.press(keys[0])
+                    PY_AUTO_GUI.keyDown(keys[0])
+                    time.sleep(KEY_PRESS_INTERVAL)
+                    PY_AUTO_GUI.keyUp(keys[0])
                 else:
-                    PY_AUTO_GUI.hotkey(*keys)
+                    for key in keys:
+                        PY_AUTO_GUI.keyDown(key)
+                    time.sleep(KEY_PRESS_INTERVAL)
+                    for key in keys:
+                        PY_AUTO_GUI.keyUp(key)
                 return ControlResult(True, f"{action} sent via pyautogui", backend)
             except Exception as exc:  # pragma: no cover - depends on environment
                 _LOGGER.exception("pyautogui failed to send %s command: %s", action, exc)

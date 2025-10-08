@@ -12,7 +12,8 @@ authors = [{name = "DSControl Contributors"}]
 dependencies = []
 
 [project.optional-dependencies]
-server-control = ["pyautogui>=0.9.54"]
+server-control = ["pydirectinput-rgx"]
+gui-control = ["flet[all]>=0.28.3", "pynput>=1.7.6"]
 
 [project.scripts]
 dscontrol-server = "dscontrol.server.cli:main"
