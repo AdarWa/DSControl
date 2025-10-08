@@ -17,4 +17,5 @@ gui-control = ["flet[all]>=0.28.3", "pynput>=1.7.6"]
 
 [project.scripts]
 dscontrol-server = "dscontrol.server.cli:main"
-dscontrol-client = "dscontrol.client.cli:main"
+dscontrol-cli = "dscontrol.client.cli:main"
+dscontrol-gui = "dscontrol.client.gui:main"

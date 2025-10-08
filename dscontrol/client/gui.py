@@ -340,13 +340,16 @@ class ClientGuiApp:
         return None
 
 
-async def main(page: ft.Page) -> None:
+async def main_(page: ft.Page) -> None:
     app = ClientGuiApp(page)
     await app.initialize()
 
 
 def run() -> None:
-    ft.app(target=main)
+    ft.app(target=main_)
+
+def main():
+    run()
 
 
 if __name__ == "__main__":
