@@ -59,7 +59,7 @@ class ClientGuiApp:
 
         # Controls ---------------------------------------------------------
         self.host_field = ft.TextField(label="Server host", value=settings["server_host"])
-        self.port_field = ft.TextField(label="Port", value=str(settings["port"]), width=120)
+        self.port_field = ft.TextField(label="Port", value=str(settings["server_port"]), width=120)
         self.client_id_field = ft.TextField(label="Client ID", value=settings["client_id"], width=200)
 
         self.connect_button = ft.ElevatedButton(text="Connect", icon="play_arrow", on_click=self._on_connect_click)
@@ -187,7 +187,7 @@ class ClientGuiApp:
             await self._connect()
 
     async def _connect(self) -> None:
-        host = self.host_field.value.strip() or DEFAULT_SETTINGS_DICT["server_host"]
+        host = self.host_field.value.strip() or DEFAULT_SETTINGS_DICT.server_host
         try:
             port = int(self.port_field.value.strip())
             if not (0 < port < 65536):
@@ -196,7 +196,7 @@ class ClientGuiApp:
             self._show_message("Port must be between 1 and 65535.", error=True)
             return
 
-        client_id = self.client_id_field.value.strip() or DEFAULT_SETTINGS_DICT["client_id"]
+        client_id = self.client_id_field.value.strip() or DEFAULT_SETTINGS_DICT.client_id
         config = ClientConfig(server_host=host, server_port=port, client_id=client_id)
 
         if self.client:

@@ -45,6 +45,7 @@ def read_settings(filename=DEFAULT_SETTINGS_FILENAME):
             return json.load(f)
     except FileNotFoundError:
         update_settings(DEFAULT_SETTINGS_DICT, filename)
+        return DEFAULT_SETTINGS_DICT.to_dict()
 
 
 def update_settings(client_config: ClientConfig, filename=DEFAULT_SETTINGS_FILENAME):
