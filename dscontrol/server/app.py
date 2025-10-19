@@ -12,6 +12,7 @@ from typing import Dict, Optional, Tuple
 
 from .. import protocol
 from .control_interface import DriverStationController
+from .remote_window import start_ffmpeg_stream
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -78,6 +79,7 @@ class DriverStationServer(asyncio.DatagramProtocol):
         _LOGGER.info("DriverStationServer listening on %s:%s", self.config.host, self.config.port)
         self._watchdog_task = asyncio.create_task(self._watchdog_loop(), name="watchdog-loop")
         self._status_task = asyncio.create_task(self._status_loop(), name="status-loop")
+        start_ffmpeg_stream(region = (0, 830, 1800, 250))
 
     async def wait_closed(self) -> None:
         if self.transport:
