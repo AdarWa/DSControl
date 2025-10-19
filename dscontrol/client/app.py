@@ -50,7 +50,9 @@ def read_settings(filename=DEFAULT_SETTINGS_FILENAME):
 
 def update_settings(client_config: ClientConfig, filename=DEFAULT_SETTINGS_FILENAME):
     with open(filename, "w") as f:
-        json.dump(client_config.to_dict(), f)
+        config_dict = client_config.to_dict()
+        json.dump(config_dict, f)
+        return config_dict
 
 
 class RemoteClient(asyncio.DatagramProtocol):
