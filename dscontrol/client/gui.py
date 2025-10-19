@@ -20,7 +20,7 @@ COLOR_RED_ACCENT = "#C62828"
 COLOR_CARD_BG = "rgba(69,90,100,0.06)"
 
 from .. import protocol
-from .app import ClientConfig, RemoteClient
+from .app import ClientConfig, RemoteClient, DEFAULT_SETTINGS_DICT, read_settings, update_settings
 
 
 def _format_timestamp(value: Optional[float]) -> str:
@@ -55,10 +55,12 @@ class ClientGuiApp:
         self._pressed_keys: set[str] = set()
         self._active_hotkeys: set[str] = set()
 
+        settings = read_settings()
+
         # Controls ---------------------------------------------------------
-        self.host_field = ft.TextField(label="Server host", value="127.0.0.1")
-        self.port_field = ft.TextField(label="Port", value=str(protocol.DEFAULT_PORT), width=120)
-        self.client_id_field = ft.TextField(label="Client ID", value="client", width=200)
+        self.host_field = ft.TextField(label="Server host", value=settings["server_host"])
+        self.port_field = ft.TextField(label="Port", value=str(settings["port"]), width=120)
+        self.client_id_field = ft.TextField(label="Client ID", value=settings["client_id"], width=200)
 
         self.connect_button = ft.ElevatedButton(text="Connect", icon="play_arrow", on_click=self._on_connect_click)
         self.enable_button = ft.FilledButton(text="Enable", icon="play_circle", on_click=self._make_command_handler(protocol.CommandType.ENABLE))
@@ -185,7 +187,7 @@ class ClientGuiApp:
             await self._connect()
 
     async def _connect(self) -> None:
-        host = self.host_field.value.strip() or "127.0.0.1"
+        host = self.host_field.value.strip() or DEFAULT_SETTINGS_DICT["server_host"]
         try:
             port = int(self.port_field.value.strip())
             if not (0 < port < 65536):
@@ -194,7 +196,7 @@ class ClientGuiApp:
             self._show_message("Port must be between 1 and 65535.", error=True)
             return
 
-        client_id = self.client_id_field.value.strip() or "client"
+        client_id = self.client_id_field.value.strip() or DEFAULT_SETTINGS_DICT["client_id"]
         config = ClientConfig(server_host=host, server_port=port, client_id=client_id)
 
         if self.client:
@@ -210,6 +212,8 @@ class ClientGuiApp:
             self.client = None
             self._set_busy(False)
             return
+
+        update_settings(config)
 
         self.state.connected = True
         self.state.client_label = f"{client_id} @ {host}:{port}"
