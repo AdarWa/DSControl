@@ -160,10 +160,15 @@ wheels = [
 name = "dscontrol"
 version = "0.1.0"
 source = { editable = "." }
+dependencies = [
+    { name = "opencv-python" },
+    { name = "pillow" },
+]
 
 [package.optional-dependencies]
 gui-control = [
     { name = "flet", extra = ["all"] },
+    { name = "opencv-python" },
     { name = "pynput" },
 ]
 server-control = [
