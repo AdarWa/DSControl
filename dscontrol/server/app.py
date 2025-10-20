@@ -12,7 +12,8 @@ from typing import Dict, Optional, Tuple
 
 from .. import protocol
 from .control_interface import DriverStationController
-from .remote_window import start_ffmpeg_stream
+from .stream_server import start_ffmpeg_server
+from .remote_window import DriverStationPipeline
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -57,6 +58,7 @@ class DriverStationServer(asyncio.DatagramProtocol):
         self._watchdog_task: Optional[asyncio.Task[None]] = None
         self._status_task: Optional[asyncio.Task[None]] = None
         self._status_log_deadline = time.time()
+        self.pipeline = DriverStationPipeline()
 
     # Lifecycle -------------------------------------------------------------
 
@@ -70,7 +72,9 @@ class DriverStationServer(asyncio.DatagramProtocol):
         _LOGGER.info("DriverStationServer listening on %s:%s", self.config.host, self.config.port)
         self._watchdog_task = asyncio.create_task(self._watchdog_loop(), name="watchdog-loop")
         self._status_task = asyncio.create_task(self._status_loop(), name="status-loop")
-        start_ffmpeg_stream(region = (0, 830, 1800, 250))
+        start_ffmpeg_server()
+        self.pipeline.start()
+        self.pipeline.show_live()
 
     async def wait_closed(self) -> None:
         if self.transport:
@@ -92,6 +96,7 @@ class DriverStationServer(asyncio.DatagramProtocol):
             self._status_task.cancel()
         if self.transport:
             self.transport.close()
+        self.pipeline.stop()
 
     # DatagramProtocol callbacks -------------------------------------------
 
