@@ -10,7 +10,7 @@ from .win_utils import get_screen_size,get_taskbar_size,activate_driverstation_w
 HOST = "0.0.0.0"
 PORT = 8080
 FRAMERATE = 20
-QUALITY = 9
+QUALITY = 3
 DS_HEIGHT = 200
 # ---------------
 
@@ -147,7 +147,7 @@ def start_ffmpeg_server():
     if not shutil.which("ffmpeg"):
         raise RuntimeError("FFMPEG not found, run this shit: winget install \"FFmpeg (Essentials Build)\"")
     activate_driverstation_window()
-    p = Process(target=run_server_process, daemon=True)
+    p = threading.Thread(target=run_server_process, daemon=True)
     p.start()
-    logging.info(f"Started MJPEG streaming process (PID={p.pid})")
+    logging.info(f"Started MJPEG streaming thread")
     return p

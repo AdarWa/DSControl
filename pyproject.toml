@@ -12,7 +12,7 @@ authors = [{name = "DSControl Contributors"}]
 dependencies = []
 
 [project.optional-dependencies]
-server-control = ["pydirectinput-rgx", "opencv-python", "easyocr"]
+server-control = ["pydirectinput-rgx", "opencv-python", "easyocr","pywin32","rapidfuzz"]
 gui-control = ["flet[all]>=0.28.3", "pynput>=1.7.6"]
 
 [project.scripts]

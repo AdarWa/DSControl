@@ -38,6 +38,9 @@ class ServerConfig:
     status_interval: float = 0.1
     log_status_every: float = 5.0
     require_hello: bool = True
+    enable_stream: bool = False
+    enable_pipeline: bool = False
+
 
 
 class DriverStationServer(asyncio.DatagramProtocol):
@@ -58,7 +61,8 @@ class DriverStationServer(asyncio.DatagramProtocol):
         self._watchdog_task: Optional[asyncio.Task[None]] = None
         self._status_task: Optional[asyncio.Task[None]] = None
         self._status_log_deadline = time.time()
-        self.pipeline = DriverStationPipeline()
+        if config.enable_pipeline:
+            self.pipeline = DriverStationPipeline()
 
     # Lifecycle -------------------------------------------------------------
 
@@ -72,9 +76,11 @@ class DriverStationServer(asyncio.DatagramProtocol):
         _LOGGER.info("DriverStationServer listening on %s:%s", self.config.host, self.config.port)
         self._watchdog_task = asyncio.create_task(self._watchdog_loop(), name="watchdog-loop")
         self._status_task = asyncio.create_task(self._status_loop(), name="status-loop")
-        start_ffmpeg_server()
-        self.pipeline.start()
-        self.pipeline.show_live()
+        if self.config.enable_stream:
+            start_ffmpeg_server()
+        if self.config.enable_pipeline:
+            self.pipeline.start()
+            # self.pipeline.show_live()
 
     async def wait_closed(self) -> None:
         if self.transport:
@@ -96,7 +102,8 @@ class DriverStationServer(asyncio.DatagramProtocol):
             self._status_task.cancel()
         if self.transport:
             self.transport.close()
-        self.pipeline.stop()
+        if self.config.enable_pipeline:
+            self.pipeline.stop()
 
     # DatagramProtocol callbacks -------------------------------------------
 
@@ -252,12 +259,15 @@ class DriverStationServer(asyncio.DatagramProtocol):
         self._send(message, addr)
 
     def _status_report(self) -> protocol.StatusReport:
-        return protocol.StatusReport(
+        report = protocol.StatusReport(
             robot_state=self.robot_state,
             last_command_by=self.last_command_by,
             last_command_at=self.last_command_at,
             connected_clients=len(self.sessions),
         )
+        if self.config.enable_pipeline:
+            report.ds_state = self.pipeline.get_outputs().ds_state
+        return report
 
     # Utility --------------------------------------------------------------
 
