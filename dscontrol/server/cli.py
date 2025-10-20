@@ -72,6 +72,16 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Driver Station address for FMS mode (default: 127.0.0.1)",
     )
     
+    parser.add_argument(
+        "--enable-stream",
+        action="store_true",
+        help="Enables the FFMPEG stream of the DriverStation"
+    )
+    parser.add_argument(
+        "--enable-pipeline",
+        action="store_true",
+        help="Enables the OCR detection pipeline of the DS state(requires FFMPEG stream)"
+    )
     return parser
 
 
@@ -105,7 +115,12 @@ def main(argv: Optional[list[str]] = None) -> None:
         team_id=args.team_id,
         alliance_station=args.alliance_station,
         ds_address=args.ds_address,
+        enable_stream=args.enable_stream,
+        enable_pipeline=args.enable_pipeline
     )
+
+    if config.enable_pipeline and not config.enable_stream:
+        raise ValueError("pipline cannot be enabled while stream is disabled; pass --enable-stream parameter")
 
     try:
         asyncio.run(run_server(config))

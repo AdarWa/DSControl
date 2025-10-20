@@ -2,7 +2,11 @@ import cv2
 import numpy as np
 import easyocr
 
-_reader = easyocr.Reader(['en'])
+_reader = None
+
+def init_ocr():
+    global _reader
+    _reader = easyocr.Reader(['en'])
 
 def crop(image, x, y, w, h):
     """
@@ -113,6 +117,5 @@ def extract_text(image, crop_region=None, preprocess=True):
             gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
             cv2.THRESH_BINARY, 31, 2
         )
-
     results = _reader.readtext(gray)
     return " ".join([text for (_, text, _) in results]).strip()

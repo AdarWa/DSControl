@@ -85,6 +85,7 @@ class StatusReport:
     last_command_by: Optional[str]
     last_command_at: Optional[float]
     connected_clients: int
+    ds_state: Optional[str]
 
     def to_payload(self) -> Dict[str, Any]:
         return {
@@ -92,6 +93,7 @@ class StatusReport:
             "last_command_by": self.last_command_by,
             "last_command_at": self.last_command_at,
             "connected_clients": self.connected_clients,
+            "ds_state": self.ds_state,
             "timestamp": time.time(),
         }
 

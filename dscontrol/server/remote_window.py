@@ -3,10 +3,18 @@ import threading
 import time
 from dataclasses import dataclass
 from .stream_server import get_latest_frame_mat
-from .pipeline_utils import crop
+from .pipeline_utils import extract_text, init_ocr
+from rapidfuzz import process
 
 # ---- Constants ----
-DS_STATE_CROP_REGION = (300, 70, 150, 100) # x, y, w, h
+DS_STATE_CROP_REGION = (230, 70, 70, 30) # x, y, w, h
+DS_STATES = [
+    "No Robot Communication",
+    "Teleoperated Enabled",
+    "Teleoperated Disabled",
+    "Autonomous Enabled",
+    "Autonomous Disabled",
+]
 
 @dataclass
 class PipelineOutputs:
@@ -15,6 +23,7 @@ class PipelineOutputs:
 
 class DriverStationPipeline:
     def __init__(self):
+        init_ocr()
         self.outputs = PipelineOutputs()
         self.latest_frame = None
         self.running = False
@@ -36,11 +45,13 @@ class DriverStationPipeline:
 
             # -------- Pipeline starts here --------
 
-            ds_state_crop = crop(DS_STATE_CROP_REGION)
+            ds_state_fuzzy = extract_text(frame, crop_region=DS_STATE_CROP_REGION, preprocess=False)
+            ds_state, _, _ = process.extractOne(ds_state_fuzzy, DS_STATES)
+            self.outputs.ds_state = ds_state
 
             # -------- Pipeline ends here --------
             with self._lock:
-                self.latest_frame = ds_state_crop
+                self.latest_frame = frame
             time.sleep(0.01)
 
     def start(self):
