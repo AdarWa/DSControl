@@ -138,3 +138,6 @@ class DriverStationConnection:
         self.listen_thread.join()
         self.udp_conn.close()
         self.listener_socket.close()
+
+if __name__ == "__main__":
+    DriverStationConnection(5987, AlliancePosition.R1, "127.0.0.1")
