@@ -5,19 +5,12 @@ Graphical client built with Flet for interacting with the Driver Station server.
 from __future__ import annotations
 
 import asyncio
-import base64
 import contextlib
-import io
-import threading
-import urllib.request
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from PIL import Image
-import cv2
 import flet as ft
-import numpy as np
 from pynput import keyboard
 
 COLOR_RED = "#D32F2F"
@@ -46,33 +39,6 @@ class _UiState:
     last_status: Optional[protocol.StatusReport] = None
 
 class ClientGuiApp:
-    def _start_video_stream(self):
-        if self._stream_running:
-            return
-
-        self._stream_running = True
-
-        def stream_loop():
-            try:
-                with urllib.request.urlopen(self.settings["server_host"]) as stream:
-                    bytes_data = b""
-                    while self._stream_running:
-                        bytes_data += stream.read(1024)
-                        a = bytes_data.find(b"\xff\xd8")
-                        b = bytes_data.find(b"\xff\xd9")
-                        if a != -1 and b != -1:
-                            jpg = bytes_data[a:b + 2]
-                            bytes_data = bytes_data[b + 2:]
-                            frame = np.array(Image.open(io.BytesIO(jpg)))
-                            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                            _, buf = cv2.imencode(".png", frame)
-                            self.video_image.src_base64 = base64.b64encode(buf).decode("utf-8")
-                            self.page.update()
-            except Exception as e:
-                print(f"Stream error: {e}")
-
-        self._stream_thread = threading.Thread(target=stream_loop, daemon=True)
-        self._stream_thread.start()
 
     def __init__(self, page: ft.Page) -> None:
         self.page = page
@@ -114,8 +80,6 @@ class ClientGuiApp:
         self.message_banner = ft.Text("", visible=False)
 
         self.video_image = ft.Image(width=640, height=360, border_radius=8)
-        self._stream_thread: Optional[threading.Thread] = None
-        self._stream_running = False
 
     async def initialize(self) -> None:
         self.page.title = "DSControl Client"
@@ -171,12 +135,9 @@ class ClientGuiApp:
         self._error_task = asyncio.create_task(self._error_consumer(), name="error-consumer")
         self._keyboard_listener = keyboard.Listener(on_press=self._on_key_press, on_release=self._on_key_release)
         self._keyboard_listener.start()
-        self._start_video_stream()
 
     async def shutdown(self) -> None:
         self._stream_running = False
-        if self._stream_thread and self._stream_thread.is_alive():
-            self._stream_thread.join(timeout=1)
 
         if self._status_task:
             self._status_task.cancel()
