@@ -1,4 +1,4 @@
-# DSControl — Remote FRC Driver Station Control
+# DSControl - Remote FRC Driver Station Control
 
 A lightweight, UDP-based system that lets laptop clients safely enable, disable, or e-stop a robot by talking to a server running on the official FRC Driver Station PC. Safety, low latency, and resilience are the guiding principles—if communications stop, the robot is forced safe immediately.
 
