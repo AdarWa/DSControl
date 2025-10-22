@@ -5,12 +5,17 @@ Graphical client built with Flet for interacting with the Driver Station server.
 from __future__ import annotations
 
 import asyncio
+import base64
 import contextlib
 from dataclasses import dataclass
 from datetime import datetime
+from io import BytesIO
+import threading
 from typing import Optional
 
 import flet as ft
+import requests
+from PIL import Image
 from pynput import keyboard
 
 COLOR_RED = "#D32F2F"
@@ -31,6 +36,24 @@ def _format_timestamp(value: Optional[float]) -> str:
     except (OSError, OverflowError, ValueError):
         return f"{value:.3f}"
 
+def mjpeg_to_base64(url, stop_event: Optional[threading.Event] = None):
+    with requests.get(url, stream=True) as stream:
+        bytes_buffer = b""
+        for chunk in stream.iter_content(chunk_size=1024):
+            if stop_event and stop_event.is_set():
+                return
+            bytes_buffer += chunk
+            a = bytes_buffer.find(b'\xff\xd8')  # start of JPEG
+            b = bytes_buffer.find(b'\xff\xd9')  # end of JPEG
+            if a != -1 and b != -1:
+                jpg = bytes_buffer[a:b+2]
+                bytes_buffer = bytes_buffer[b+2:]
+                img = Image.open(BytesIO(jpg))
+                with BytesIO() as output:
+                    img.save(output, format="PNG")
+                    yield base64.b64encode(output.getvalue()).decode()
+                if stop_event and stop_event.is_set():
+                    return
 
 @dataclass
 class _UiState:
@@ -79,7 +102,12 @@ class ClientGuiApp:
 
         self.message_banner = ft.Text("", visible=False)
 
-        self.video_image = ft.Image(width=640, height=360, border_radius=8)
+        self.video_image = ft.Image(expand=True, opacity=0.0, src_base64="dummy")
+        self.stream_checkbox = ft.Checkbox(label="Enable stream", value=False, disabled=True, on_change=self._on_stream_toggle)
+
+        self._stream_running = False
+        self._stream_thread: Optional[threading.Thread] = None
+        self._stream_stop_event = threading.Event()
 
     async def initialize(self) -> None:
         self.page.title = "DSControl Client"
@@ -117,11 +145,15 @@ class ClientGuiApp:
                 bgcolor=COLOR_CARD_BG,
                 border_radius=8,
             ),
+            ft.Row([self.enable_button, self.disable_button, self.estop_button], spacing=16),
             ft.Row(
-                [self.enable_button, self.disable_button, self.estop_button],
+                [
+                    ft.Text("Stream", size=18, weight=ft.FontWeight.BOLD),
+                    self.stream_checkbox,
+                ],
                 spacing=16,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
             ),
-            ft.Text("Stream", size=18, weight=ft.FontWeight.BOLD),
             self.video_image,
             self.message_banner,
         ]
@@ -135,9 +167,11 @@ class ClientGuiApp:
         self._error_task = asyncio.create_task(self._error_consumer(), name="error-consumer")
         self._keyboard_listener = keyboard.Listener(on_press=self._on_key_press, on_release=self._on_key_release)
         self._keyboard_listener.start()
+        if self.stream_checkbox.value:
+            self._start_stream()
 
     async def shutdown(self) -> None:
-        self._stream_running = False
+        self._stop_stream()
 
         if self._status_task:
             self._status_task.cancel()
@@ -161,7 +195,7 @@ class ClientGuiApp:
             while True:
                 report = await self.status_queue.get()
                 self.state.last_status = report
-                self.robot_state_text.value = f"Robot state: {report.robot_state}"
+                self.robot_state_text.value = f"Robot state: {report}"
                 last_by = report.last_command_by or "-"
                 ts = _format_timestamp(report.last_command_at)
                 self.last_command_text.value = f"Last command: {last_by} @ {ts}"
@@ -226,6 +260,8 @@ class ClientGuiApp:
         self._show_message(f"Connected to {host}:{port} as {client_id}", error=False)
         self._update_connection_ui()
         self._set_busy(False)
+        self.stream_checkbox.disabled = False
+        self.stream_checkbox.update()
 
     async def _disconnect(self) -> None:
         self._set_busy(True)
@@ -237,6 +273,9 @@ class ClientGuiApp:
         self._update_connection_ui()
         self._show_message("Disconnected.", error=False)
         self._set_busy(False)
+        self.stream_checkbox.disabled = True
+        self.stream_checkbox.update()
+        self._stop_stream()
 
     def _update_connection_ui(self) -> None:
         if self.state.connected:
@@ -294,6 +333,68 @@ class ClientGuiApp:
         self.enable_button.update()
         self.disable_button.update()
         self.estop_button.update()
+
+    def _on_stream_toggle(self, _: ft.ControlEvent) -> None:
+        if self.stream_checkbox.value:
+            self._start_stream()
+        else:
+            self._stop_stream(clear_image=True)
+
+    def _start_stream(self) -> None:
+        if self._stream_running or not self.state.connected:
+            return
+        self.video_image.opacity = 1.0
+        self.video_image.update()
+        self._stream_stop_event.clear()
+        self._stream_running = True
+        self._stream_thread = threading.Thread(target=self._stream_worker, daemon=True)
+        self._stream_thread.start()
+
+    def _stop_stream(self, *, clear_image: bool = False) -> None:
+        if not self._stream_running:
+            if clear_image:
+                self._clear_stream_image()
+            return
+        self.video_image.opacity = 0.0
+        self.video_image.update()
+        self._stream_running = False
+        self._stream_stop_event.set()
+        thread = self._stream_thread
+        self._stream_thread = None
+        if thread and thread.is_alive():
+            thread.join(timeout=1)
+        if clear_image:
+            self._clear_stream_image()
+        self.stream_checkbox.value = False
+        self.stream_checkbox.update()
+
+    def _stream_worker(self) -> None:
+        while self._stream_running and not self._stream_stop_event.is_set():
+            try:
+                for frame in mjpeg_to_base64("http://"+self.host_field.value.strip() + ":" + str(int(self.port_field.value.strip())+1) + "/mjpeg", stop_event=self._stream_stop_event):
+                    if self._stream_stop_event.is_set():
+                        break
+                    self.loop.call_soon_threadsafe(self._update_stream_image, frame)
+                break
+            except Exception as exc:
+                if self._stream_stop_event.is_set():
+                    break
+                self.loop.call_soon_threadsafe(self._post_stream_error, f"Stream error: {exc}")
+                if self._stream_stop_event.wait(2.0):
+                    break
+        self._stream_running = False
+        self._stream_thread = None
+
+    def _update_stream_image(self, frame_base64: str) -> None:
+        self.video_image.src_base64 = frame_base64
+        self.video_image.update()
+
+    def _clear_stream_image(self) -> None:
+        self.video_image.src_base64 = "dummy"
+        self.video_image.update()
+
+    def _post_stream_error(self, message: str) -> None:
+        self._show_message(message, error=True)
 
     def _on_key_press(self, key: keyboard.Key) -> None:
         key_id = self._key_identifier(key)
