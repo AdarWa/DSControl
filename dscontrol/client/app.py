@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 import logging
 import time
 from dataclasses import dataclass
@@ -18,7 +19,6 @@ _LOGGER = logging.getLogger(__name__)
 StatusCallback = Callable[[protocol.StatusReport], None]
 ErrorCallback = Callable[[str], None]
 
-
 @dataclass
 class ClientConfig:
     server_host: str = "127.0.0.1"
@@ -27,6 +27,33 @@ class ClientConfig:
     heartbeat_interval: float = protocol.HEARTBEAT_INTERVAL_SECONDS
     hello_retry_interval: float = 1.0
 
+    def to_dict(self):
+        return {
+            "server_host": self.server_host,
+            "server_port": self.server_port,
+            "client_id": self.client_id,
+            "heartbeat_interval": self.heartbeat_interval,
+            "hello_retry_interval": self.hello_retry_interval
+        }
+
+DEFAULT_SETTINGS_FILENAME = "settings.json"
+DEFAULT_SETTINGS_DICT = ClientConfig()
+
+def read_settings(filename=DEFAULT_SETTINGS_FILENAME):
+    try:
+        with open(filename, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        update_settings(DEFAULT_SETTINGS_DICT, filename)
+        return DEFAULT_SETTINGS_DICT.to_dict()
+
+
+def update_settings(client_config: ClientConfig, filename=DEFAULT_SETTINGS_FILENAME):
+    with open(filename, "w") as f:
+        config_dict = client_config.to_dict()
+        json.dump(config_dict, f)
+        return config_dict
+
 
 class RemoteClient(asyncio.DatagramProtocol):
     """
@@ -34,10 +61,10 @@ class RemoteClient(asyncio.DatagramProtocol):
     """
 
     def __init__(
-        self,
-        config: ClientConfig,
-        on_status: Optional[StatusCallback] = None,
-        on_error: Optional[ErrorCallback] = None,
+            self,
+            config: ClientConfig,
+            on_status: Optional[StatusCallback] = None,
+            on_error: Optional[ErrorCallback] = None,
     ) -> None:
         super().__init__()
         self.config = config
