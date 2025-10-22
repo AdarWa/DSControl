@@ -5,16 +5,10 @@ from dataclasses import dataclass
 from .stream_server import get_latest_frame_mat
 from .pipeline_utils import extract_text, init_ocr
 from rapidfuzz import process
+from ..protocol import DS_STATES
 
 # ---- Constants ----
 DS_STATE_CROP_REGION = (230, 70, 70, 30) # x, y, w, h
-DS_STATES = [
-    "No Robot Communication",
-    "Teleoperated Enabled",
-    "Teleoperated Disabled",
-    "Autonomous Enabled",
-    "Autonomous Disabled",
-]
 
 @dataclass
 class PipelineOutputs:

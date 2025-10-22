@@ -20,6 +20,18 @@ DEFAULT_PORT = 8750
 HEARTBEAT_INTERVAL_SECONDS = 0.1
 HEARTBEAT_TIMEOUT_SECONDS = 0.25
 
+# Shared Constants ---------------------------------------------------------
+COLOR_DS_STATES_MAPPING = {
+    "No Robot Communication": "#FF3B30",   # bright red - critical error
+    "Teleoperated Enabled": "#34C759",     # green - active/ready
+    "Teleoperated Disabled": "#FFD60A",    # yellow - idle but ready
+    "Autonomous Enabled": "#0A84FF",       # blue - active auto mode
+    "Autonomous Disabled": "#5AC8FA",      # light blue - standby auto mode
+    "No Robot Code": "#FF9500"             # orange - missing program
+}
+
+DS_STATES = COLOR_DS_STATES_MAPPING.keys()
+
 
 class MessageType(str, Enum):
     HELLO = "HELLO"
