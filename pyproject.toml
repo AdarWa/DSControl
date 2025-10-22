@@ -8,12 +8,14 @@ version = "0.1.0"
 description = "FRC Remote Driver Station Control System"
 readme = "README.md"
 requires-python = ">=3.10"
-authors = [{name = "DSControl Contributors"}]
+authors = [
+    { name = "AdarWa" },
+    { name = "rakrakon" }
+]
 dependencies = []
-
 [project.optional-dependencies]
 server-control = ["pydirectinput-rgx"]
-gui-control = ["flet[all]>=0.28.3", "pynput>=1.7.6"]
+gui-control = ["flet[all]", "pynput>=1.7.6","requests","pillow"]
 
 [project.scripts]
 dscontrol-server = "dscontrol.server.cli:main"
