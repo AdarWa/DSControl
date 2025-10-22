@@ -7,8 +7,6 @@ import numpy as np
 from .win_utils import get_screen_size,get_taskbar_size,activate_driverstation_window
 
 # --- CONFIG ---
-HOST = "0.0.0.0"
-PORT = 8080
 FRAMERATE = 20
 QUALITY = 3
 DS_HEIGHT = 200
@@ -125,13 +123,13 @@ class ThreadedHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
     daemon_threads = True
 
 
-def run_server_process():
+def run_server_process(host: str, port: int):
     """Start FFmpeg and MJPEG HTTP server together in a subprocess."""
     ffmpeg = subprocess.Popen(ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0)
     threading.Thread(target=frame_reader, args=(ffmpeg,), daemon=True).start()
 
-    server = ThreadedHTTPServer((HOST, PORT), MJPEGHandler)
-    logging.info(f"Serving MJPEG on http://{HOST}:{PORT}/mjpeg")
+    server = ThreadedHTTPServer((host, port), MJPEGHandler)
+    logging.info(f"Serving MJPEG on http://{host}:{port}/mjpeg")
 
     try:
         server.serve_forever()
@@ -142,12 +140,12 @@ def run_server_process():
         logging.info("FFmpeg terminated and server stopped.")
 
 
-def start_ffmpeg_server():
+def start_ffmpeg_server(host: str, port: int):
     """Launch the MJPEG streamer as a background process."""
     if not shutil.which("ffmpeg"):
         raise RuntimeError("FFMPEG not found, run this shit: winget install \"FFmpeg (Essentials Build)\"")
     activate_driverstation_window()
-    p = threading.Thread(target=run_server_process, daemon=True)
+    p = threading.Thread(target=run_server_process, daemon=True, args=(host, port))
     p.start()
     logging.info(f"Started MJPEG streaming thread")
     return p

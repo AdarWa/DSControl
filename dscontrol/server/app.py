@@ -86,7 +86,7 @@ class DriverStationServer(asyncio.DatagramProtocol):
         self._watchdog_task = asyncio.create_task(self._watchdog_loop(), name="watchdog-loop")
         self._status_task = asyncio.create_task(self._status_loop(), name="status-loop")
         if self.config.enable_stream:
-            start_ffmpeg_server()
+            start_ffmpeg_server(self.config.host, self.config.port+1)
         if self.config.enable_pipeline:
             self.pipeline.start()
             # self.pipeline.show_live()
@@ -273,6 +273,7 @@ class DriverStationServer(asyncio.DatagramProtocol):
             last_command_by=self.last_command_by,
             last_command_at=self.last_command_at,
             connected_clients=len(self.sessions),
+            ds_state=""
         )
         if self.config.enable_pipeline:
             report.ds_state = self.pipeline.get_outputs().ds_state
