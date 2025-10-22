@@ -12,6 +12,8 @@ from typing import Dict, Optional, Tuple
 
 from .. import protocol
 from .control_interface import DriverStationController
+from .stream_server import start_ffmpeg_server
+from .remote_window import DriverStationPipeline
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -36,6 +38,9 @@ class ServerConfig:
     status_interval: float = 0.1
     log_status_every: float = 5.0
     require_hello: bool = True
+    enable_stream: bool = False
+    enable_pipeline: bool = False
+
 
 
 class DriverStationServer(asyncio.DatagramProtocol):
@@ -56,6 +61,8 @@ class DriverStationServer(asyncio.DatagramProtocol):
         self._watchdog_task: Optional[asyncio.Task[None]] = None
         self._status_task: Optional[asyncio.Task[None]] = None
         self._status_log_deadline = time.time()
+        if config.enable_pipeline:
+            self.pipeline = DriverStationPipeline()
 
     # Lifecycle -------------------------------------------------------------
 
@@ -69,6 +76,11 @@ class DriverStationServer(asyncio.DatagramProtocol):
         _LOGGER.info("DriverStationServer listening on %s:%s", self.config.host, self.config.port)
         self._watchdog_task = asyncio.create_task(self._watchdog_loop(), name="watchdog-loop")
         self._status_task = asyncio.create_task(self._status_loop(), name="status-loop")
+        if self.config.enable_stream:
+            start_ffmpeg_server(self.config.host, self.config.port+1)
+        if self.config.enable_pipeline:
+            self.pipeline.start()
+            # self.pipeline.show_live()
 
     async def wait_closed(self) -> None:
         if self.transport:
@@ -90,6 +102,8 @@ class DriverStationServer(asyncio.DatagramProtocol):
             self._status_task.cancel()
         if self.transport:
             self.transport.close()
+        if self.config.enable_pipeline:
+            self.pipeline.stop()
 
     # DatagramProtocol callbacks -------------------------------------------
 
@@ -245,12 +259,16 @@ class DriverStationServer(asyncio.DatagramProtocol):
         self._send(message, addr)
 
     def _status_report(self) -> protocol.StatusReport:
-        return protocol.StatusReport(
+        report = protocol.StatusReport(
             robot_state=self.robot_state,
             last_command_by=self.last_command_by,
             last_command_at=self.last_command_at,
             connected_clients=len(self.sessions),
+            ds_state=""
         )
+        if self.config.enable_pipeline:
+            report.ds_state = self.pipeline.get_outputs().ds_state
+        return report
 
     # Utility --------------------------------------------------------------
 

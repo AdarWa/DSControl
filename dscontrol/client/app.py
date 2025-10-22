@@ -194,6 +194,7 @@ class RemoteClient(asyncio.DatagramProtocol):
             last_command_by=payload.get("last_command_by"),
             last_command_at=last_command_at,
             connected_clients=connected_clients,
+            ds_state=""
         )
         self.last_status = report
         if self.on_status:

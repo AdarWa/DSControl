@@ -45,6 +45,16 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
         help="Minimum logging level (default: INFO)",
     )
+    parser.add_argument(
+        "--enable-stream",
+        action="store_true",
+        help="Enables the FFMPEG stream of the DriverStation"
+    )
+    parser.add_argument(
+        "--enable-pipeline",
+        action="store_true",
+        help="Enables the OCR detection pipeline of the DS state(requires FFMPEG stream)"
+    )
     return parser
 
 
@@ -74,7 +84,12 @@ def main(argv: Optional[list[str]] = None) -> None:
         port=args.port,
         heartbeat_timeout=args.heartbeat_timeout,
         status_interval=args.status_interval,
+        enable_stream=args.enable_stream,
+        enable_pipeline=args.enable_pipeline
     )
+
+    if config.enable_pipeline and not config.enable_stream:
+        raise ValueError("pipline cannot be enabled while stream is disabled; pass --enable-stream parameter")
 
     try:
         asyncio.run(run_server(config))
