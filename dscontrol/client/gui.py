@@ -23,6 +23,7 @@ COLOR_GREEN = "#43A047"
 COLOR_WHITE = "#FFFFFF"
 COLOR_RED_ACCENT = "#C62828"
 COLOR_CARD_BG = "rgba(69,90,100,0.06)"
+NO_CONNECTION_COLOR = ft.Colors.YELLOW_400
 
 from .. import protocol
 from .app import ClientConfig, RemoteClient, DEFAULT_SETTINGS_DICT, read_settings, update_settings
@@ -96,7 +97,7 @@ class ClientGuiApp:
         )
 
         self.status_header = ft.Text("Disconnected", color=COLOR_RED, size=16, weight=ft.FontWeight.BOLD)
-        self.robot_state_text = ft.Text("Robot state: -")
+        self.robot_state_text = ft.Text("-", size=25, no_wrap=True, weight=ft.FontWeight.BOLD,color=NO_CONNECTION_COLOR)
         self.last_command_text = ft.Text("Last command: -")
         self.connected_clients_text = ft.Text("Connected clients: -")
 
@@ -141,7 +142,7 @@ class ClientGuiApp:
                     tight=True,
                 ),
                 padding=16,
-                width=420,
+                width=700,
                 bgcolor=COLOR_CARD_BG,
                 border_radius=8,
             ),
@@ -195,7 +196,9 @@ class ClientGuiApp:
             while True:
                 report = await self.status_queue.get()
                 self.state.last_status = report
-                self.robot_state_text.value = f"Robot state: {report}"
+                self.robot_state_text.value = report.ds_state or report.robot_state
+                if report.ds_state:
+                    self.robot_state_text.color = protocol.COLOR_DS_STATES_MAPPING.get(report.ds_state, NO_CONNECTION_COLOR)
                 last_by = report.last_command_by or "-"
                 ts = _format_timestamp(report.last_command_at)
                 self.last_command_text.value = f"Last command: {last_by} @ {ts}"
@@ -288,7 +291,8 @@ class ClientGuiApp:
             self.status_header.color = COLOR_RED
             self.connect_button.text = "Connect"
             self.connect_button.icon = "play_arrow"
-            self.robot_state_text.value = "Robot state: -"
+            self.robot_state_text.value = "-"
+            self.robot_state_text.color = NO_CONNECTION_COLOR
             self.last_command_text.value = "Last command: -"
             self.connected_clients_text.value = "Connected clients: -"
 
