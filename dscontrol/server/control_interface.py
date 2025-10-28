@@ -14,6 +14,7 @@ import logging
 import platform
 from dataclasses import dataclass
 from typing import Optional
+from .stream_server import X,Y
 import time
 
 _LOGGER = logging.getLogger(__name__)
@@ -57,6 +58,9 @@ class DriverStationController:
     ENABLE_COMBO = ["[", "]", "\\"]
     DISABLE_KEY = "enter"
     ESTOP_COMBO = ["space"]
+    DS_WINDOW_REFERENCE = (X,Y)
+    RELATIVE_DISABLE_POS = (0,0)
+    RELATIVE_ENABLE_POS = (0,0)
 
     def __init__(self, backend_preference: Optional[str] = None) -> None:
         self._backend = backend_preference or self._select_backend()
@@ -77,6 +81,12 @@ class DriverStationController:
 
     def estop(self) -> ControlResult:
         return self._send_keys(self.ESTOP_COMBO, "estop")
+    
+    def click_relative(self,reference: tuple, point: tuple) -> None:
+        assert PY_AUTO_GUI
+        refX,refY = reference
+        x,y = point
+        PY_AUTO_GUI.leftClick(refX+x, refY+y)
 
     # Internal helpers -----------------------------------------------------
 
@@ -85,6 +95,10 @@ class DriverStationController:
         if backend == "pyautogui" and PY_AUTO_GUI:
             try:
                 _LOGGER.debug("Sending %s via pyautogui: %s", action, keys)
+                if action == "enable":
+                    self.click_relative(self.DS_WINDOW_REFERENCE, self.RELATIVE_ENABLE_POS)
+                elif action == "disable":
+                    self.click_relative(self.DS_WINDOW_REFERENCE, self.RELATIVE_DISABLE_POS)
                 if len(keys) == 1:
                     PY_AUTO_GUI.keyDown(keys[0])
                     time.sleep(KEY_PRESS_INTERVAL)
