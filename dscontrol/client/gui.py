@@ -96,6 +96,20 @@ class ClientGuiApp:
             on_click=self._make_command_handler(protocol.CommandType.ESTOP),
         )
 
+        self.mode_dropdown = ft.Dropdown(
+            label="Mode",
+            width=220,
+            options=[
+            ft.dropdown.Option("Teleoperated"),
+            ft.dropdown.Option("Autonomous"),
+            ft.dropdown.Option("Practice"),
+            ft.dropdown.Option("Test"),
+            ],
+            value="Teleoperated",
+            on_change=self._make_dropdown_command_handler(lambda: self.mode_dropdown.value),
+            disabled=not self.state.connected,
+        )
+
         self.status_header = ft.Text("Disconnected", color=COLOR_RED, size=16, weight=ft.FontWeight.BOLD)
         self.robot_state_text = ft.Text("-", size=25, no_wrap=True, weight=ft.FontWeight.BOLD,color=NO_CONNECTION_COLOR)
         self.last_command_text = ft.Text("Last command: -")
@@ -146,7 +160,7 @@ class ClientGuiApp:
                 bgcolor=COLOR_CARD_BG,
                 border_radius=8,
             ),
-            ft.Row([self.enable_button, self.disable_button, self.estop_button], spacing=16),
+            ft.Row([self.enable_button, self.disable_button, self.estop_button, self.mode_dropdown], spacing=16),
             ft.Row(
                 [
                     ft.Text("Stream", size=18, weight=ft.FontWeight.BOLD),
@@ -299,12 +313,14 @@ class ClientGuiApp:
         self.enable_button.disabled = not self.state.connected
         self.disable_button.disabled = not self.state.connected
         self.estop_button.disabled = not self.state.connected
+        self.mode_dropdown.disabled = not self.state.connected
 
         self.status_header.update()
         self.connect_button.update()
         self.enable_button.update()
         self.disable_button.update()
         self.estop_button.update()
+        self.mode_dropdown.update()
         self.robot_state_text.update()
         self.last_command_text.update()
         self.connected_clients_text.update()
@@ -317,6 +333,29 @@ class ClientGuiApp:
             try:
                 self.client.send_command(command)
                 self._show_message(f"Sent {command.value} command.", error=False)
+            except Exception as exc:
+                self._show_message(f"Failed to send command: {exc}", error=True)
+
+        return _handler
+    
+    def _make_dropdown_command_handler(self, value):
+        async def _handler(_: ft.ControlEvent) -> None:
+            val = value()
+            if not self.client:
+                self._show_message(f"Can't send {val}. Not connected.", error=True)
+                return
+            try:
+                cmd = protocol.CommandType.TELEOP
+                if val == "Teleoperated":
+                    cmd = protocol.CommandType.TELEOP
+                elif val == "Autonomous":
+                    cmd = protocol.CommandType.AUTO
+                elif val == "Practice":
+                    cmd = protocol.CommandType.PRACTICE
+                elif val == "Test":
+                    cmd = protocol.CommandType.TEST
+                self.client.send_command(cmd)
+                self._show_message(f"Sent {cmd.value} command.", error=False)
             except Exception as exc:
                 self._show_message(f"Failed to send command: {exc}", error=True)
 

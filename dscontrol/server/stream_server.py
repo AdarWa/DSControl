@@ -7,11 +7,12 @@ from multiprocessing import Process
 import cv2
 import numpy as np
 from .win_utils import get_screen_size,get_taskbar_size,activate_driverstation_window
+from .calibration.calibration_storage import CalibrationStorage
 
 # --- CONFIG ---
 FRAMERATE = 20
 QUALITY = 3
-DS_HEIGHT = 200
+DS_HEIGHT = CalibrationStorage.get().ds_height
 # ---------------
 
 SCREEN_WIDTH, SCREEN_HEIGHT = get_screen_size()
