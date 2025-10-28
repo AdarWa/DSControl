@@ -77,6 +77,7 @@ class RemoteClient(asyncio.DatagramProtocol):
         self._hello_task: Optional[asyncio.Task[None]] = None
         self.last_status: Optional[protocol.StatusReport] = None
         self._last_hello = 0.0
+        self._status_waiter: Optional[asyncio.Future[None]] = None
 
     # Lifecycle -------------------------------------------------------------
 
@@ -85,11 +86,17 @@ class RemoteClient(asyncio.DatagramProtocol):
             return
 
         loop = asyncio.get_running_loop()
+        self._status_waiter = loop.create_future()
         await loop.create_datagram_endpoint(
             lambda: self, remote_addr=(self.config.server_host, self.config.server_port)
         )
         await self._connected.wait()
         self._running = True
+        try:
+            await self._ping_server()
+        except Exception:
+            await self.close()
+            raise
 
     async def close(self) -> None:
         self._running = False
@@ -103,6 +110,7 @@ class RemoteClient(asyncio.DatagramProtocol):
                 await self._hello_task
         if self.transport:
             self.transport.close()
+        self._status_waiter = None
 
     # DatagramProtocol overrides -------------------------------------------
 
@@ -197,6 +205,8 @@ class RemoteClient(asyncio.DatagramProtocol):
             ds_state=payload.get("ds_state")
         )
         self.last_status = report
+        if self._status_waiter and not self._status_waiter.done():
+            self._status_waiter.set_result(None)
         if self.on_status:
             self.on_status(report)
 
@@ -205,3 +215,20 @@ class RemoteClient(asyncio.DatagramProtocol):
             _LOGGER.error("Cannot send message; transport not ready")
             return
         self.transport.sendto(message.to_json())
+
+    async def _ping_server(self, timeout: float = 1.0) -> None:
+        if not self.transport:
+            raise RuntimeError("Client not connected")
+        waiter = self._status_waiter
+        if not waiter or waiter.done():
+            loop = asyncio.get_running_loop()
+            waiter = loop.create_future()
+            self._status_waiter = waiter
+        self._send(protocol.make_hello(self.config.client_id))
+        try:
+            await asyncio.wait_for(asyncio.shield(waiter), timeout=timeout)
+        except asyncio.TimeoutError as exc:
+            waiter.cancel()
+            raise TimeoutError("Timed out waiting for status response from server") from exc
+        finally:
+            self._status_waiter = None
