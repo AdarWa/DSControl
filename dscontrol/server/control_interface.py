@@ -15,6 +15,7 @@ import platform
 from dataclasses import dataclass
 from typing import Optional
 from .stream_server import X,Y
+from .win_utils import activate_driverstation_window
 import time
 
 _LOGGER = logging.getLogger(__name__)
@@ -96,8 +97,10 @@ class DriverStationController:
             try:
                 _LOGGER.debug("Sending %s via pyautogui: %s", action, keys)
                 if action == "enable":
+                    activate_driverstation_window()
                     self.click_relative(self.DS_WINDOW_REFERENCE, self.RELATIVE_ENABLE_POS)
                 elif action == "disable":
+                    activate_driverstation_window()
                     self.click_relative(self.DS_WINDOW_REFERENCE, self.RELATIVE_DISABLE_POS)
                 if len(keys) == 1:
                     PY_AUTO_GUI.keyDown(keys[0])
