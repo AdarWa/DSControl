@@ -1,6 +1,8 @@
 import logging
 import shutil
 import subprocess, threading, socketserver, http.server
+import time
+from typing import Optional
 from multiprocessing import Process
 import cv2
 import numpy as np
@@ -48,22 +50,43 @@ ffmpeg_cmd = [
 latest_frame = None
 lock = threading.Lock()
 
-def frame_reader(proc):
+FFMPEG_RESTART_INITIAL_DELAY = 1.0
+FFMPEG_RESTART_MAX_DELAY = 10.0
+
+
+def frame_reader(proc, stop_event: threading.Event):
     """Continuously read MJPEG frames from FFmpeg stdout."""
     global latest_frame
     buffer = b""
-    while True:
-        chunk = proc.stdout.read(4096)
-        if not chunk:
-            logging.warning("FFmpeg exited or stopped producing output.")
-            break
+    stdout = proc.stdout
+    if stdout is None:
+        logging.error("FFmpeg stdout pipe is unavailable; stopping frame reader.")
+        return
+    try:
+        while not stop_event.is_set():
+            chunk = stdout.read(4096)
+            if not chunk:
+                if stop_event.is_set():
+                    logging.debug("Frame reader stopping due to shutdown request.")
+                else:
+                    return_code = proc.poll()
+                    if return_code is None:
+                        logging.warning("FFmpeg stopped producing output.")
+                    else:
+                        logging.warning("FFmpeg exited with code %s.", return_code)
+                break
 
-        buffer += chunk
-        # Find JPEG frame end marker
-        while b"\xff\xd9" in buffer:
-            frame, buffer = buffer.split(b"\xff\xd9", 1)
-            with lock:
-                latest_frame = frame + b"\xff\xd9"
+            buffer += chunk
+            # Find JPEG frame end marker
+            while b"\xff\xd9" in buffer:
+                frame, buffer = buffer.split(b"\xff\xd9", 1)
+                with lock:
+                    latest_frame = frame + b"\xff\xd9"
+    finally:
+        try:
+            stdout.close()
+        except Exception:
+            pass
 
 def get_latest_frame_mat():
     """
@@ -86,6 +109,7 @@ class MJPEGHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path != "/mjpeg":
             self.send_response(404)
+            self.wfile.write(b"Error 404 - Not found\nNavigate to /mjpeg")
             self.end_headers()
             return
 
@@ -125,8 +149,57 @@ class ThreadedHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
 
 def run_server_process(host: str, port: int):
     """Start FFmpeg and MJPEG HTTP server together in a subprocess."""
-    ffmpeg = subprocess.Popen(ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, bufsize=0)
-    threading.Thread(target=frame_reader, args=(ffmpeg,), daemon=True).start()
+    stop_event = threading.Event()
+    ffmpeg_lock = threading.Lock()
+    ffmpeg_proc: Optional[subprocess.Popen] = None
+
+    def launch_ffmpeg() -> subprocess.Popen:
+        logging.info("Launching FFmpeg capture pipeline.")
+        return subprocess.Popen(
+            ffmpeg_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            bufsize=0,
+        )
+
+    def supervise_ffmpeg():
+        nonlocal ffmpeg_proc
+        global latest_frame
+        backoff = FFMPEG_RESTART_INITIAL_DELAY
+
+        while not stop_event.is_set():
+            try:
+                proc = launch_ffmpeg()
+            except Exception as exc:
+                logging.exception("Failed to start FFmpeg process: %s", exc)
+                time.sleep(backoff)
+                backoff = min(backoff * 2, FFMPEG_RESTART_MAX_DELAY)
+                continue
+
+            with ffmpeg_lock:
+                ffmpeg_proc = proc
+            threading.Thread(target=frame_reader, args=(proc, stop_event), daemon=True).start()
+
+            backoff = FFMPEG_RESTART_INITIAL_DELAY
+            return_code = proc.wait()
+
+            if stop_event.is_set():
+                break
+
+            with lock:
+                latest_frame = None
+            logging.warning(
+                "FFmpeg stopped (code %s). Restarting in %.1f seconds.",
+                return_code,
+                backoff,
+            )
+            time.sleep(backoff)
+            backoff = min(backoff * 2, FFMPEG_RESTART_MAX_DELAY)
+
+        logging.info("FFmpeg supervisor exiting.")
+
+    supervisor_thread = threading.Thread(target=supervise_ffmpeg, daemon=True)
+    supervisor_thread.start()
 
     server = ThreadedHTTPServer((host, port), MJPEGHandler)
     logging.info(f"Serving MJPEG on http://{host}:{port}/mjpeg")
@@ -136,7 +209,23 @@ def run_server_process(host: str, port: int):
     except KeyboardInterrupt:
         pass
     finally:
-        ffmpeg.terminate()
+        stop_event.set()
+        try:
+            server.shutdown()
+        except Exception:
+            pass
+        server.server_close()
+
+        with ffmpeg_lock:
+            proc = ffmpeg_proc
+        if proc and proc.poll() is None:
+            proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+
+        supervisor_thread.join(timeout=5)
         logging.info("FFmpeg terminated and server stopped.")
 
 
