@@ -88,7 +88,3 @@ Every UDP frame is UTF-8 JSON with a `type` field (`HELLO`, `HEARTBEAT`, `COMMAN
 - All command applications note the client ID and backend success state.
 - Watchdog and heartbeat failures emit warnings and immediately issue a disable command (`watchdog` pseudo-client).
 - Control falls back to simulation if no automation backend exists, keeping development safe.
-
-## Todo
-
-- Integrate a slim VNC/web preview.
