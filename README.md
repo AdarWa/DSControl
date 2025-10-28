@@ -78,6 +78,16 @@ Tip: append `--` to pass additional arguments directly to the scripts, e.g. `uv 
 uv run dscontrol-gui
 ```
 
+### Calibrating the Driver Station layout
+
+Run the interactive tool to capture the Driver Station window height, status region, and button positions:
+
+```bash
+uv run dscontrol-calibrate
+```
+
+The tool walks through a series of clicks (top edge, status box, enable/disable, and mode tabs) and writes the results to `driverstation_layout.json`. The calibration requires the optional Windows dependencies (`uv sync --extra server-control`).
+
 ## Protocol Snapshot
 
 Every UDP frame is UTF-8 JSON with a `type` field (`HELLO`, `HEARTBEAT`, `COMMAND`, `STATUS`, `ERROR`). The common helpers for building and parsing these messages live in `dscontrol/protocol.py`. Clients send 100 ms heartbeats; the server broadcasts status at 100 ms by default.
