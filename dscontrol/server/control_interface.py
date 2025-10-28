@@ -14,8 +14,9 @@ import logging
 import platform
 from dataclasses import dataclass
 from typing import Optional
-from .stream_server import X,Y
 from .win_utils import activate_driverstation_window
+from .calibration.calibration_storage import CalibrationStorage
+from enum import Enum
 import time
 
 _LOGGER = logging.getLogger(__name__)
@@ -41,6 +42,11 @@ class ControlResult:
     message: str
     backend: str
 
+class RobotMode(Enum):
+    TELEOP = "teleoperated"
+    AUTO = "autonomous"
+    PRACTICE = "practice"
+    TEST = "test"
 
 class DriverStationController:
     """
@@ -59,12 +65,19 @@ class DriverStationController:
     ENABLE_COMBO = ["[", "]", "\\"]
     DISABLE_KEY = "enter"
     ESTOP_COMBO = ["space"]
-    DS_WINDOW_REFERENCE = (X,Y)
-    RELATIVE_DISABLE_POS = (0,0)
-    RELATIVE_ENABLE_POS = (0,0)
+    DS_WINDOW_REFERENCE = CalibrationStorage.get().ds_origin.to_tuple()
+    RELATIVE_DISABLE_POS = CalibrationStorage.get().disable_position.to_tuple()
+    RELATIVE_ENABLE_POS = CalibrationStorage.get().enable_position.to_tuple()
+    RELATIVE_MODE_POSES = CalibrationStorage.get().mode_positions
 
     def __init__(self, backend_preference: Optional[str] = None) -> None:
         self._backend = backend_preference or self._select_backend()
+
+    def click_relative(self,reference: tuple, point: tuple) -> None:
+        assert PY_AUTO_GUI
+        refX,refY = reference
+        x,y = point
+        PY_AUTO_GUI.leftClick(refX+x, refY+y)
 
     @staticmethod
     def _select_backend() -> str:
@@ -83,12 +96,11 @@ class DriverStationController:
     def estop(self) -> ControlResult:
         return self._send_keys(self.ESTOP_COMBO, "estop")
     
-    def click_relative(self,reference: tuple, point: tuple) -> None:
-        assert PY_AUTO_GUI
-        refX,refY = reference
-        x,y = point
-        PY_AUTO_GUI.leftClick(refX+x, refY+y)
-
+    def set_mode(self, mode: RobotMode) -> ControlResult:
+        activate_driverstation_window()
+        self.click_relative(self.DS_WINDOW_REFERENCE, self.RELATIVE_MODE_POSES[mode.value].to_tuple())
+        return ControlResult(True, f"sent {mode} mode using {self._backend}",self._backend)
+    
     # Internal helpers -----------------------------------------------------
 
     def _send_keys(self, keys: list[str], action: str) -> ControlResult:
