@@ -45,6 +45,10 @@ class CommandType(str, Enum):
     ENABLE = "enable"
     DISABLE = "disable"
     ESTOP = "estop"
+    TELEOP = "teleop"
+    AUTO = "auto"
+    PRACTICE = "practice"
+    TEST = "test"
 
 
 class ProtocolError(Exception):
