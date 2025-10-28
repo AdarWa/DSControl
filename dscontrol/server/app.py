@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Optional, Tuple
 
 from .. import protocol
-from .control_interface import DriverStationController
+from .control_interface import DriverStationController, RobotMode
 from .stream_server import start_ffmpeg_server
 from .remote_window import DriverStationPipeline
 
@@ -193,6 +193,14 @@ class DriverStationServer(asyncio.DatagramProtocol):
         elif command == protocol.CommandType.ESTOP:
             result = self.controller.estop()
             self.robot_state = "estop"
+        elif command == protocol.CommandType.TELEOP:
+            self.controller.set_mode(RobotMode.TELEOP)
+        elif command == protocol.CommandType.AUTO:
+            self.controller.set_mode(RobotMode.AUTO)
+        elif command == protocol.CommandType.PRACTICE:
+            self.controller.set_mode(RobotMode.PRACTICE)
+        elif command == protocol.CommandType.TEST:
+            self.controller.set_mode(RobotMode.TEST)
         else:
             result = self.controller.disable()
             self.robot_state = "disabled"
