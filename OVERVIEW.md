@@ -16,9 +16,11 @@ The system consists of two main components:
 
 - Runs on the dedicated Driver Station PC.
 
-- Interfaces with the real **FRC Driver Station application** (via simulated keyboard events or Win32 API automation).
+- Interfaces with the real **FRC Driver Station application** via two supported modes:
+  - **Keystroke mode**: Simulated keyboard events or Win32 API automation
+  - **FMS mode**: UDP packets mimicking the Field Management System protocol
 
-- Hosts a **local TCP or UDP server** to receive commands from remote laptops.
+- Hosts a **local UDP server** to receive commands from remote laptops.
 
 - Automatically **disables the robot** if:
   
