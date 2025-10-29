@@ -20,7 +20,7 @@ The system consists of two main components:
   - **Keystroke mode**: Simulated keyboard events or Win32 API automation
   - **FMS mode**: UDP packets mimicking the Field Management System protocol
 
-- Hosts a **local UDP server** to receive commands from remote laptops.
+- Hosts a **local UDP server** to receive commands from remote laptops (protocol supports UDP/TCP transport).
 
 - Automatically **disables the robot** if:
   
