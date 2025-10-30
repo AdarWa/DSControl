@@ -45,6 +45,33 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
         help="Minimum logging level (default: INFO)",
     )
+
+    # FMS integration options
+    parser.add_argument(
+        "--use-fms",
+        action="store_true",
+        help="Use FMS protocol instead of keystroke control",
+    )
+    parser.add_argument(
+        "--team-id",
+        type=int,
+        default=5987,
+        help="Team number for FMS mode (default: 5987)",
+    )
+    parser.add_argument(
+        "--alliance-station",
+        type=str,
+        default="R1",
+        choices=["R1", "R2", "R3", "B1", "B2", "B3"],
+        help="Alliance station for FMS mode (default: R1)",
+    )
+    parser.add_argument(
+        "--ds-address",
+        type=str,
+        default="127.0.0.1",
+        help="Driver Station address for FMS mode (default: 127.0.0.1)",
+    )
+
     parser.add_argument(
         "--enable-stream",
         action="store_true",
@@ -84,6 +111,10 @@ def main(argv: Optional[list[str]] = None) -> None:
         port=args.port,
         heartbeat_timeout=args.heartbeat_timeout,
         status_interval=args.status_interval,
+        use_fms=args.use_fms,
+        team_id=args.team_id,
+        alliance_station=args.alliance_station,
+        ds_address=args.ds_address,
         enable_stream=args.enable_stream,
         enable_pipeline=args.enable_pipeline
     )

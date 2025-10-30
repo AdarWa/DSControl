@@ -38,9 +38,12 @@ class ServerConfig:
     status_interval: float = 0.1
     log_status_every: float = 5.0
     require_hello: bool = True
+    use_fms: bool = False
+    team_id: int = 5987
+    alliance_station: str = "R1"
+    ds_address: str = "127.0.0.1"
     enable_stream: bool = False
     enable_pipeline: bool = False
-
 
 
 class DriverStationServer(asyncio.DatagramProtocol):
@@ -51,7 +54,12 @@ class DriverStationServer(asyncio.DatagramProtocol):
     def __init__(self, config: Optional[ServerConfig] = None) -> None:
         super().__init__()
         self.config = config or ServerConfig()
-        self.controller = DriverStationController()
+        self.controller = DriverStationController(
+            use_fms=self.config.use_fms,
+            team_id=self.config.team_id,
+            alliance_station=self.config.alliance_station,
+            ds_address=self.config.ds_address,
+        )
         self.transport: Optional[asyncio.DatagramTransport] = None
         self.sessions: Dict[str, ClientSession] = {}
         self.running = asyncio.Event()

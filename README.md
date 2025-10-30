@@ -42,15 +42,36 @@ uv sync                       # resolves deps and creates .venv (if needed)
 
 ### Running the server
 
+The server supports two control modes:
+
+#### Keystroke Mode (default)
+
 ```bash
 uv run dscontrol-server
 ```
+
+This mode sends keyboard shortcuts to the Driver Station application (requires `pydirectinput-rgx` on Windows).
+
+#### FMS Mode
+
+```bash
+uv run dscontrol-server --use-fms --team-id 5987 --alliance-station R1 --ds-address 127.0.0.1
+```
+
+This mode uses UDP packets to control the Driver Station directly, mimicking the Field Management System protocol. This is useful when you want to control the DS programmatically without relying on keyboard automation.
+
+Options for FMS mode:
+- `--use-fms`: Enable FMS protocol mode
+- `--team-id`: Team number (default: 5987)
+- `--alliance-station`: Alliance station position - R1, R2, R3, B1, B2, or B3 (default: R1)
+- `--ds-address`: Driver Station IP address (default: 127.0.0.1)
 
 Key behaviours:
 
 - First client performs `HELLO` registration.
 - A watchdog task enforces the heartbeat timeout; losing every client disables the robot.
-- `DriverStationController` logs actions when automation backends are unavailable, enabling safe testing on non-Windows machines.
+- In keystroke mode: `DriverStationController` logs actions when automation backends are unavailable, enabling safe testing on non-Windows machines.
+- In FMS mode: Commands are sent via UDP packets to the Driver Station.
 
 ### Running the client
 
